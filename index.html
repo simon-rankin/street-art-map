@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melbourne Indigenous Street Art</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+        }
+
+        .acknowledgement-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: #FFD700;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .acknowledgement-overlay.hidden {
+            display: none;
+        }
+
+        .acknowledgement-content {
+            max-width: 900px;
+            text-align: center;
+        }
+
+        .acknowledgement-text {
+            font-size: clamp(24px, 5vw, 48px);
+            line-height: 1.5;
+            color: #000000;
+            margin-bottom: 40px;
+            font-weight: 600;
+        }
+
+        .acknowledgement-text strong {
+            color: #FF0000;
+            font-weight: 800;
+        }
+
+        .acknowledge-btn {
+            background: #000000;
+            color: #FFD700;
+            border: none;
+            padding: 20px 60px;
+            font-size: clamp(20px, 3vw, 32px);
+            font-weight: 700;
+            font-family: 'Figtree', sans-serif;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+
+        .acknowledge-btn:hover {
+            transform: scale(1.05);
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+
+        .map-header {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px 30px;
+            z-index: 999;
+            border-radius: 8px;
+            max-width: 450px;
+            transition: all 0.4s ease;
+        }
+
+        .map-header.collapsed {
+            background: rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .map-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #FFD700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .map-byline {
+            font-size: 14px;
+            color: #FFD700;
+            margin: 8px 0 0 0;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        .project-intro {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #FFD700;
+            max-height: 500px;
+            opacity: 1;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .map-header.collapsed .project-intro {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        .intro-text {
+            font-size: 14px;
+            color: #FFFFFF;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .intro-features {
+            font-size: 13px;
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+
+        .intro-features strong {
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+
+        .toggle-intro-btn {
+            background: #FFD700;
+            color: #000000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'Figtree', sans-serif;
+            cursor: pointer;
+            transition: transform 0.2s;
+            pointer-events: auto;
+            margin-top: 5px;
+        }
+
+        .toggle-intro-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .map-header.collapsed .toggle-intro-btn {
+            background: rgba(255, 215, 0, 0.9);
+        }
+
+        .custom-pin {
+            width: 40px;
+            height: 40px;
+            background: #000000;
+            border: 3px solid #FFD700;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            position: relative;
+            cursor: pointer;
+        }
+
+        .custom-pin::after {
+            content: '';
+            width: 14px;
+            height: 14px;
+            background: #FFD700;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            max-width: 500px;
+            height: 100vh;
+            background: #000000;
+            color: #FFFFFF;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+            transition: right 0.4s ease, max-width 0.4s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active {
+            right: 0;
+        }
+
+        .modal-overlay.fullscreen {
+            max-width: 95%;
+        }
+
+        .modal-content {
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .modal-content.fullscreen-layout {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+
+        .modal-left {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .modal-right {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 0;
+            background: #000000;
+            padding: 20px 0 10px 0;
+            z-index: 10;
+        }
+
+        .close-btn {
+            background: #FF0000;
+            color: #FFD700;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .close-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .fullscreen-btn {
+            background: #FFD700;
+            color: #000000;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .fullscreen-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .slideshow-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .artwork-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border: 3px solid #FFD700;
+            display: none;
+        }
+
+        .artwork-image.active-slide {
+            display: block;
+        }
+
+        .fullscreen-layout .slideshow-container {
+            height: calc(100vh - 200px);
+        }
+
+        .fullscreen-layout .artwork-image {
+            height: 100%;
+            max-height: 100%;
+        }
+
+        .slide-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 215, 0, 0.8);
+            color: #000000;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            z-index: 5;
+        }
+
+        .slide-btn:hover {
+            background: #FFD700;
+        }
+
+        .slide-btn.prev {
+            left: 10px;
+        }
+
+        .slide-btn.next {
+            right: 10px;
+        }
+
+        .expand-image-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(255, 215, 0, 0.9);
+            color: #000000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: 'Figtree', sans-serif;
+        }
+
+        .expand-image-btn:hover {
+            background: #FFD700;
+        }
+
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90vh;
+        }
+
+        .lightbox-image {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: -50px;
+            right: 0;
+            background: #FF0000;
+            color: #FFD700;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .lightbox-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 215, 0, 0.8);
+            color: #000000;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .lightbox-btn.prev {
+            left: -70px;
+        }
+
+        .lightbox-btn.next {
+            right: -70px;
+        }
+
+        .slide-counter {
+            position: absolute;
+            bottom: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #FFD700;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .artwork-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+
+        .artist-name {
+            font-size: 18px;
+            color: #FFD700;
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        .artwork-location {
+            font-size: 14px;
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+
+        .artwork-coords {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+
+        .artwork-analysis {
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #FFFFFF;
+        }
+
+        .citations {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #CCCCCC;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #FFD700;
+        }
+
+        .citations-title {
+            color: #FFD700;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .artist-link {
+            display: inline-block;
+            background: #FF0000;
+            color: #FFD700;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .artist-link:hover {
+            transform: translateY(-2px);
+        }
+
+        .separator {
+            height: 2px;
+            background: #FFD700;
+            margin: 20px 0;
+        }
+
+        /* Hide Leaflet Routing Machine control panel */
+        .leaflet-routing-container {
+            display: none !important;
+        }
+
+        .leaflet-control-container .leaflet-routing-container-hide {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .map-header {
+                bottom: 10px;
+                left: 10px;
+                padding: 15px 20px;
+                max-width: calc(100% - 20px);
+            }
+
+            .map-title {
+                font-size: 18px;
+                letter-spacing: 0.5px;
+            }
+
+            .map-byline {
+                font-size: 12px;
+                margin-top: 5px;
+            }
+
+            .intro-text {
+                font-size: 13px;
+                margin-bottom: 12px;
+            }
+
+            .intro-features {
+                font-size: 12px;
+                margin-bottom: 8px;
+            }
+
+            .toggle-intro-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+
+            .modal-overlay {
+                top: auto;
+                bottom: -100%;
+                right: 0;
+                left: 0;
+                max-width: 100%;
+                height: 85vh;
+                border-radius: 20px 20px 0 0;
+                transition: bottom 0.4s ease;
+            }
+
+            .modal-overlay.active {
+                bottom: 0;
+            }
+
+            .modal-overlay.fullscreen {
+                height: 95vh;
+            }
+
+            .modal-content {
+                padding: 15px;
+            }
+
+            .modal-content.fullscreen-layout {
+                flex-direction: column;
+            }
+
+            .artwork-image {
+                height: 200px;
+            }
+
+            .fullscreen-layout .slideshow-container {
+                height: 300px;
+            }
+
+            .fullscreen-layout .artwork-image {
+                height: 100%;
+            }
+
+            .artwork-title {
+                font-size: 22px;
+            }
+
+            .artist-name {
+                font-size: 16px;
+            }
+
+            .artwork-location {
+                font-size: 13px;
+            }
+
+            .artwork-analysis {
+                font-size: 15px;
+            }
+
+            .lightbox-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+
+            .lightbox-btn.prev {
+                left: 10px;
+            }
+
+            .lightbox-btn.next {
+                right: 10px;
+            }
+
+            .lightbox-close {
+                top: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="acknowledgement" class="acknowledgement-overlay">
+        <div class="acknowledgement-content">
+            <p class="acknowledgement-text">
+                This website acknowledges the Wurundjeri and Woi Wurrung people as the traditional owners of the land on which this website was created, and pays respect to Elders past, present and emerging. Sovereignty was never ceded. <br><br>
+    
+            </p>
+            <button class="acknowledge-btn" onclick="closeAcknowledgement()">Acknowledge</button>
+        </div>
+    </div>
+    <div id="map"></div>
+    <div id="mapHeader" class="map-header">
+        <h1 class="map-title">Indigenous Street Art Map</h1>
+        <p class="map-byline">Curated by Esther Rankin MacDonald</p>
+        <div class="project-intro">
+            <p class="intro-text">
+This tour takes you through Melbourne’s inner-north, stopping at 5 powerful works of street art created by Indigenous Australian artists. Each work is analysed using a different theoretical framework mentioned in required readings or taught throughout the subject. One of the frameworks I have developed myself, drawing on synthesised knowledge and perspectives explored in “Street Art CCDP20001”.             </p>
+            <div class="intro-features">
+                <strong>📍 Click markers</strong> to explore each artwork<br>
+                <strong>🚴 Red route</strong> connects all locations<br>
+                <strong>📸 Multiple images</strong> per artwork available
+            </div>
+        </div>
+        <button class="toggle-intro-btn" onclick="toggleIntro()">
+            <span id="toggleText">Hide Introduction</span>
+        </button>
+    </div>
+    <div id="modal" class="modal-overlay">
+        <div id="modal-content" class="modal-content">
+            <div class="button-group">
+                <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">⛶</button>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div id="modal-left" class="modal-left">
+                <div class="slideshow-container">
+                    <div id="slideshow-images"></div>
+                    <button class="slide-btn prev" onclick="changeSlide(-1)">‹</button>
+                    <button class="slide-btn next" onclick="changeSlide(1)">›</button>
+                    <button class="expand-image-btn" onclick="openLightbox()">⛶ View Fullscreen</button>
+                </div>
+            </div>
+            <div id="modal-right" class="modal-right">
+                <h2 id="modal-title" class="artwork-title"></h2>
+                <div id="modal-artist" class="artist-name"></div>
+                <div id="modal-address" class="artwork-location"></div>
+                <div id="modal-coords" class="artwork-coords"></div>
+                <div class="separator"></div>
+                <p id="modal-analysis" class="artwork-analysis"></p>
+                <div id="modal-citations" class="citations"></div>
+                <div class="separator"></div>
+                <a id="modal-instagram" class="artist-link" href="#" target="_blank">View Artist on Instagram</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="lightbox" class="lightbox">
+        <div class="lightbox-content">
+            <button class="lightbox-close" onclick="closeLightbox()">×</button>
+            <img id="lightbox-image" class="lightbox-image" src="" alt="Artwork">
+            <button class="lightbox-btn prev" onclick="changeLightboxSlide(-1)">‹</button>
+            <button class="lightbox-btn next" onclick="changeLightboxSlide(1)">›</button>
+            <div class="slide-counter" id="lightbox-counter"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js"></script>
+    <script>
+        // Track if map has been interacted with
+        let mapInteracted = false;
+
+        // Initialize map centered on Fitzroy/Brunswick/Northcote area
+        const map = L.map('map', {
+            zoomControl: true,
+            attributionControl: true
+        }).setView([-37.7833, 144.9833], 13);
+
+        // Auto-collapse introduction on first map interaction
+        function handleFirstInteraction() {
+            if (!mapInteracted) {
+                mapInteracted = true;
+                const header = document.getElementById('mapHeader');
+                if (!header.classList.contains('collapsed')) {
+                    header.classList.add('collapsed');
+                    document.getElementById('toggleText').textContent = 'Show Introduction';
+                }
+            }
+        }
+
+        // Listen for various map interactions
+        map.on('movestart', handleFirstInteraction);
+        map.on('zoomstart', handleFirstInteraction);
+        map.on('click', handleFirstInteraction);
+        map.on('drag', handleFirstInteraction);
+
+        // Add minimal tile layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Artwork data
+        const artworks = [
+            {
+                id: 1,
+                title: `TREATY (2023)`,
+                artist: `Gadigal artist Jeswri`,
+                lat: -37.77387,
+                lng: 144.97145,
+                address: `1 Piera St, Brunswick East VIC 3057`,
+                instagram: `jeswri`,
+                images: [
+                    `images/artwork01/01.jpg`,
+                    `images/artwork01/02.jpg`
+                ],
+                analysis: `'TREATY', a portrait of Gunnai, Gunditjmara and Djab Wurrung Senator Lydia Thorpe powerfully refutes Jean Baudrillard's seminal but narrow profiling of street art and graffiti as a proliferation of "empty signifiers". In his 1975 essay "KOOL KILLER, or The Insurrection of Signs", Baudrillard argued that markings on walls, specifically in New York's subway system, were self-referential. He posited these markings had "no content and no message", totally devoid of a decipherable political message (Baudrillard 1976, 80). Yet, 'TREATY' stands as the antithesis of Baudrillard's argument. Every element of this work is a full signifier, loaded with unmistakable political and cultural meaning. Thorpe's strong gaze and her fist held high represent iconic gestures of defiance and resistance. Similarly, Jeswri's utilisation of the colours of the Aboriginal flag immediately signifies to passers-by that 'TREATY' is a transformative signifier with a potent political message. It reinvents a blank Brunswick wall into a site that specifically signifies the ongoing fight for Indigenous self-determination. It is anything but "empty".`,
+                citations: `<div class="citations-title">References</div>Moreton-Robinson, A 2015, <i>The White Possessive: Property, Power, and Indigenous Sovereignty</i>, University of Minnesota Press, Minneapolis.<br><br>Pascoe, B 2018, <i>Dark Emu: Aboriginal Australia and the Birth of Agriculture</i>, Magabala Books, Broome.<br><br>Watson, I 2015, <i>Aboriginal Peoples, Colonialism and International Law: Raw Law</i>, Routledge, Abingdon.`
+            },
+            {
+                id: 2,
+                title: `Homage to Victorian First Peoples (2005)`,
+                artist: `Brabrawooloong Gunnai artist Ray Thomas `,
+                lat: -37.7744444,
+                lng: 144.9975,
+                address: `Northcote Town Hall, 189 High Street, Northcote VIC 3070`,
+                instagram: `raythomasart`,
+                images: [
+                    `images/artwork02/01.jpg`,
+                    `images/artwork02/02.jpg`,
+                    `images/artwork02/03.jpg`
+                ],
+                analysis: `Using Marusek and Wagner's conceptualisation of murals as generators of "public memory" (2024, 2), Ray Thomas' 'Homage to Victorian First Peoples' actively forms public memory by painting Indigenous cultural heritage on public infrastructure. Thomas explicitly connects his work to the ancient traditional practice of his ancestors who "etched into the inner side of possum skin cloaks", as a practice of "telling and maintaining the stories of the person that made his or her cloak" (Thomas, 2024). Thomas treats the concrete wall of the civic square as the cloak of Melbourne city. Just as a cloak carried and preserved Thomas' ancestors' stories through generations, his symmetrical and asymmetrical painted lines inscribe the story of Indigenous existence and survival onto the city's skin. As such Thomas' work ensures Indigenous history is maintained and passed down as public memory to all who inhabit the urban space. `,
+                citations: `<div class="citations-title">References</div>Norris, RP & Hamacher, DW 2009, 'The Astronomy of Aboriginal Australia', <i>Journal of Astronomical History and Heritage</i>, vol. 12, no. 2, pp. 137-152.<br><br>Fuller, RS, Norris, RP & Trudgett, M 2014, 'The Astronomy of the Kamilaroi People and Their Neighbours', <i>Australian Aboriginal Studies</i>, no. 2, pp. 3-29.<br><br>Johnson, D 2011, <i>Night Skies of Aboriginal Australia: A Noctuary</i>, University of Sydney, Sydney.`
+            },
+            {
+                id: 3,
+                title: `Convergence (2024)`,
+                artist: `Gunditjmara and Torres Strait Islander artist Lisa Waup`,
+                lat: -37.786674,
+                lng: 144.9952238,
+                address: `249 Queens Parade, Fitzroy North VIC 3068`,
+                instagram: `lisa.waup`,
+                images: [
+                    `images/artwork03/01.jpg`,
+                    `images/artwork03/02.jpg`,
+                    `images/artwork03/03.jpg`
+                ],
+                analysis: `Lisa Waup's commissioned mural, 'Convergence', operates at the complex intersection of commercialised urban development, public art and community identity. 'Convergence' challenges Miriam Greenberg's concept of the "city-as a brand" where "coordinated professional and global strategies of urban branding" are strategically deployed for the "production of a monolithic, consumer-oriented version of the urban imaginary" (Greenberg 2000, 229). As a commission on a new 14-storey apartment building, the mural is undeniably part of Fitzroy's official aesthetic, potentially serving a place-branding function. However, Waup's artistic vision transcends a mere marketing tool. She describes her use of linework as "connecting paths" and circles as representations of "family and community". Her artistic vision for 'Convergence' reflects the concepts of Kin and connection which are central in Indigenous culture. She paints these values onto a symbol of modern urban density and in doing so creates a "soul" for the urban development that insists its true value lies in its social fabric, not just its real estate. 'Convergence' ensures that the story being "sold" with these apartments is not one of mere luxury, but one of gathering, connection and the living culture of Fitzroy. `,
+                citations: `<div class="citations-title">References</div>Broome, R 2005, <i>Aboriginal Victorians: A History Since 1800</i>, Allen & Unwin, Crows Nest.<br><br>Clark, ID 1990, <i>Aboriginal Languages and Clans: An Historical Atlas of Western and Central Victoria, 1800-1900</i>, Monash Publications in Geography, Melbourne.<br><br>Presland, G 2010, <i>First People: The Eastern Kulin of Melbourne, Port Phillip and Central Victoria</i>, Museum Victoria, Melbourne.`
+            },
+            {
+                id: 4,
+                title: `Stolen Land (2022)`,
+                artist: `Gumbagynggirr artist Aretha Brown`,
+                lat: -37.79987,
+                lng: 144.98583,
+                address: `Hope St Radio, Collingwood Yards, 35 Johnson St, Collingwood VIC 3066`,
+                instagram: `_enterthedragon`,
+                images: [
+                    `images/artwork04/01.jpg`,
+                    `images/artwork04/02.jpg`
+                ],
+                analysis: `Achille Mbembe understands colonisation as a project that “inscribes the colonized in the space of modernity” (2002, 634). Aretha Brown’s ‘Stolen Land’ stands as a powerful challenge to the colonisation project. She uses the tools of the modern global city, such as contemporary art and a trendy wine bar window, to inscribe her identity and her sovereign Indigenous presence. As such, her work can be viewed as an act of “transformative resistance” (Ashcroft 2009, 91). Brown’s ‘Stolen Land’ “take[s] hold of the pen” (Ashcroft 2009, 91) and utilises the spaces of the modern city for a counter-discursive statement. It epitomises Ashcroft’s “glocalization” through the interaction of a global form with localised political meaning. ‘Stolen Land’ also exhibits Blak futurism, a concept central to Brown’s work. Using glass as the medium, white paint and a contemporary blocking technique, she rejects the notion “that for work to be real spiritualism it has to be about the Dreaming or an ancient time” (Brown, National Portrait Gallery). Instead, Brown says her work focus on “right now” and the “future”, giving her the ability to “change the world that is changing them [her]” (Berman, 16). Her work transforms the window of wine bar in a gentrified suburb into a lens for viewing an Indigenous future.`,
+                citations: `<div class="citations-title">References</div>Latz, P 1995, <i>Bushfires and Bushtucker: Aboriginal Plant Use in Central Australia</i>, IAD Press, Alice Springs.<br><br>Isaacs, J 2002, <i>Bush Food: Aboriginal Food and Herbal Medicine</i>, New Holland Publishers, Sydney.<br><br>Clarke, PA 2012, 'Australian Plants as Aboriginal Tools', <i>Rosenberg Publishing</i>, Kenthurst.`
+            },
+            {
+                id: 5,
+                title: `Always (2025)`,
+                artist: `Kamilaroi, Gamilaraay and Gummaroi artist Reko Rennie`,
+                lat: -37.7703317,
+                lng: 144.9557081,
+                address: `22 Phoenix St, Brunswick VIC 3056`,
+                instagram: `rekorennie`,
+                images: [
+                    `images/artwork05/01.jpg`,
+                    `images/artwork05/02.jpg`,
+                    `images/artwork05/03.jpg`
+                ],
+                analysis: `Reko Rennie’s ‘Always’ reconceptualises the city as a “sovereign palimpsest”, a synthesised theoretical concept I have coined myself. A “palimpsest” refers to “a very old text or document in which writing has been … covered by new writing” (Cambridge Dictionary, 2025). The urban space of Melbourne has an underlying foundational layer of Indigenous sovereignty. However, colonial infrastructure imposes on this foundational layer, like “new writing”. A “sovereign palimpsest” describes street art that actively makes Indigenous sovereignty and existence – the foundational layer of urban space – the visible focal point again. Rennie’s ‘Always’ does exactly this. The mural’s diamond shapes reference the traditional markings of the Kamilaroi people and re-inscribe Indigenous existence, resistance and survival onto a symbol of colonial, urban development – Brunswick’s new $30 million arts and community precinct. ‘Always’ challenges the colonial narrative that prevails over all urban spaces in Australia. While this colonial narrative treats the city as a blank slate, ‘Always’ acts as a declaration of the truth: the truth that the built city of Melbourne always has and always will exist upon the land of the Wurundjeri and Woi Wurrung people.`,
+                citations: `<div class="citations-title">References</div>Gammage, B 2011, <i>The Biggest Estate on Earth: How Aborigines Made Australia</i>, Allen & Unwin, Sydney.<br><br>Yibarbuk, D et al. 2001, 'Fire Ecology and Aboriginal Land Management in Central Arnhem Land, Northern Australia', <i>Journal of Biogeography</i>, vol. 28, no. 3, pp. 325-343.<br><br>Pascoe, B 2014, <i>Dark Emu: Black Seeds: Agriculture or Accident?</i>, Magabala Books, Broome.`
+            }
+        ];
+
+        let currentSlideIndex = 0;
+        let currentArtwork = null;
+
+        // Custom icon
+        const customIcon = L.divIcon({
+            className: 'custom-pin',
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40]
+        });
+
+        // Add markers
+        artworks.forEach(artwork => {
+            const marker = L.marker([artwork.lat, artwork.lng], { icon: customIcon })
+                .addTo(map)
+                .on('click', () => openModal(artwork));
+        });
+
+        // Create walking/cycling route connecting all locations
+        const waypoints = artworks.map(artwork => L.latLng(artwork.lat, artwork.lng));
+
+        const routingControl = L.Routing.control({
+            waypoints: waypoints,
+            routeWhileDragging: false,
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: false,
+            showAlternatives: false,
+            lineOptions: {
+                styles: [{
+                    color: '#FF0000',
+                    opacity: 0.8,
+                    weight: 4
+                }],
+                extendToWaypoints: false,
+                missingRouteTolerance: 10
+            },
+            createMarker: function() { return null; },
+            router: L.Routing.osrmv1({
+                serviceUrl: 'https://router.project-osrm.org/route/v1',
+                profile: 'foot',
+                timeout: 30000,
+                useHints: false
+            }),
+            show: false,
+            summaryTemplate: '<div class="routing-summary">{distance}, {time}</div>',
+            collapsible: false
+        }).addTo(map);
+
+        // Display route info
+        routingControl.on('routesfound', function(e) {
+            const routes = e.routes;
+            const summary = routes[0].summary;
+            const distance = (summary.totalDistance / 1000).toFixed(2);
+            const timeMinutes = Math.round(summary.totalTime / 60);
+            const timeCycling = Math.round(timeMinutes / 3); // cycling is roughly 3x faster
+            
+            console.log('Walking/cycling route: ' + distance + ' km');
+            console.log('Estimated time: ' + timeMinutes + ' min walking / ' + timeCycling + ' min cycling');
+        });
+
+        routingControl.on('routingerror', function(e) {
+            console.warn('Routing error:', e);
+        });
+
+        function openModal(artwork) {
+            currentArtwork = artwork;
+            currentSlideIndex = 0;
+
+            // Build slideshow
+            const slideshowContainer = document.getElementById('slideshow-images');
+            slideshowContainer.innerHTML = '';
+            artwork.images.forEach((img, index) => {
+                const imgElement = document.createElement('img');
+                imgElement.src = img;
+                imgElement.className = 'artwork-image' + (index === 0 ? ' active-slide' : '');
+                imgElement.alt = artwork.title + ' - Image ' + (index + 1);
+                slideshowContainer.appendChild(imgElement);
+            });
+
+            document.getElementById('modal-title').textContent = artwork.title;
+            document.getElementById('modal-artist').textContent = artwork.artist;
+            document.getElementById('modal-address').textContent = artwork.address;
+            document.getElementById('modal-coords').textContent = artwork.lat.toFixed(4) + '°S, ' + artwork.lng.toFixed(4) + '°E';
+            document.getElementById('modal-analysis').textContent = artwork.analysis;
+            document.getElementById('modal-citations').innerHTML = artwork.citations;
+            document.getElementById('modal-instagram').href = 'https://instagram.com/' + artwork.instagram;
+            
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            document.getElementById('modal').classList.remove('fullscreen');
+            document.getElementById('modal-content').classList.remove('fullscreen-layout');
+            currentArtwork = null;
+        }
+
+        function toggleFullscreen() {
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.toggle('fullscreen');
+            content.classList.toggle('fullscreen-layout');
+        }
+
+        function changeSlide(direction) {
+            if (!currentArtwork) return;
+            
+            const slides = document.querySelectorAll('.artwork-image');
+            slides[currentSlideIndex].classList.remove('active-slide');
+            
+            currentSlideIndex += direction;
+            if (currentSlideIndex >= slides.length) currentSlideIndex = 0;
+            if (currentSlideIndex < 0) currentSlideIndex = slides.length - 1;
+            
+            slides[currentSlideIndex].classList.add('active-slide');
+        }
+
+        function openLightbox() {
+            if (!currentArtwork) return;
+            
+            document.getElementById('lightbox').classList.add('active');
+            updateLightbox();
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+
+        function changeLightboxSlide(direction) {
+            if (!currentArtwork) return;
+            
+            currentSlideIndex += direction;
+            if (currentSlideIndex >= currentArtwork.images.length) currentSlideIndex = 0;
+            if (currentSlideIndex < 0) currentSlideIndex = currentArtwork.images.length - 1;
+            
+            updateLightbox();
+            
+            // Also update the modal slideshow
+            const slides = document.querySelectorAll('.artwork-image');
+            slides.forEach(s => s.classList.remove('active-slide'));
+            slides[currentSlideIndex].classList.add('active-slide');
+        }
+
+        function updateLightbox() {
+            document.getElementById('lightbox-image').src = currentArtwork.images[currentSlideIndex];
+            document.getElementById('lightbox-counter').textContent = (currentSlideIndex + 1) + ' / ' + currentArtwork.images.length;
+        }
+
+        function closeAcknowledgement() {
+            document.getElementById('acknowledgement').classList.add('hidden');
+        }
+
+        function toggleIntro() {
+            const header = document.getElementById('mapHeader');
+            const toggleText = document.getElementById('toggleText');
+            
+            header.classList.toggle('collapsed');
+            
+            if (header.classList.contains('collapsed')) {
+                toggleText.textContent = 'Show Introduction';
+            } else {
+                toggleText.textContent = 'Hide Introduction';
+            }
+        }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (document.getElementById('lightbox').classList.contains('active')) {
+                    closeLightbox();
+                } else {
+                    closeModal();
+                }
+            }
+            // Arrow keys for slideshow
+            if (e.key === 'ArrowLeft') {
+                if (document.getElementById('lightbox').classList.contains('active')) {
+                    changeLightboxSlide(-1);
+                } else if (document.getElementById('modal').classList.contains('active')) {
+                    changeSlide(-1);
+                }
+            }
+            if (e.key === 'ArrowRight') {
+                if (document.getElementById('lightbox').classList.contains('active')) {
+                    changeLightboxSlide(1);
+                } else if (document.getElementById('modal').classList.contains('active')) {
+                    changeSlide(1);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
